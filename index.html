@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de Etiquetas - Argox 3 Colunas</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --text: #18181b;
+      --muted: #52525b;
+      --border: #d4d4d8;
+      --accent: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .painel {
+      max-width: 720px;
+      margin: 0 auto 24px auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .painel h1 {
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .painel p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .campos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    input {
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .acoes {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      height: 40px;
+      padding: 0 16px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-gerar {
+      background: #ffffff;
+      color: var(--accent);
+    }
+
+    .btn-imprimir {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .aviso {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #b91c1c;
+      min-height: 16px;
+    }
+
+    /* Área de visualização e impressão (105mm largura x 15mm altura) */
+    .folha-preview {
+      width: 105mm;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 10px;
+      border: 1px dashed #9ca3af;
+    }
+
+    .grade-etiquetas {
+      display: grid;
+      grid-template-columns: repeat(3, 35mm);
+      width: 105mm;
+    }
+
+    .etiqueta {
+      width: 35mm;
+      height: 15mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.6mm 1mm;
+      overflow: hidden;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .etiqueta svg {
+      width: 31mm;
+      height: 8.5mm;
+      display: block;
+    }
+
+    .valor {
+      font-size: 8.5pt;
+      font-weight: 700;
+      line-height: 1.05;
+      margin-top: 0.4mm;
+      color: #000000;
+      letter-spacing: 0.2px;
+    }
+
+    @media print {
+      @page {
+        size: 105mm 15mm;
+        margin: 0;
+      }
+
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+
+      .painel {
+        display: none !important;
+      }
+
+      .folha-preview {
+        width: 105mm;
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+
+      .grade-etiquetas {
+        width: 105mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="painel">
+    <h1>Etiquetas de Preço — Argox 214 Plus (3 Colunas)</h1>
+    <p>Preço permitido de R$ 0,00 até R$ 1.000,00. Formato base: 105 mm × 15 mm (3 colunas de ~35 mm).</p>
+
+    <div class="campos">
+      <label>
+        Preço (R$ 0 a 1000)
+        <input type="number" id="preco" min="0" max="1000" step="0.01" value="59.90" />
+      </label>
+
+      <label>
+        Quantidade de cópias (etiquetas)
+        <input type="number" id="quantidade" min="1" max="300" step="1" value="6" />
+      </label>
+
+      <label>
+        Prefixo do código (opcional)
+        <input type="text" id="prefixo" maxlength="10" value="P" />
+      </label>
+    </div>
+
+    <div class="acoes">
+      <button type="button" class="btn-gerar" id="btnGerar">Atualizar Prévia</button>
+      <button type="button" class="btn-imprimir" id="btnImprimir">Imprimir Etiquetas</button>
+    </div>
+
+    <div class="aviso" id="aviso"></div>
+  </section>
+
+  <main class="folha-preview">
+    <div class="grade-etiquetas" id="grade"></div>
+  </main>
+
+  <script>
+    const precoInput = document.getElementById("preco");
+    const qtdInput = document.getElementById("quantidade");
+    const prefixoInput = document.getElementById("prefixo");
+    const gradeEl = document.getElementById("grade");
+    const avisoEl = document.getElementById("aviso");
+    const btnGerar = document.getElementById("btnGerar");
+    const btnImprimir = document.getElementById("btnImprimir");
+
+    function formatarMoedaBR(valor) {
+      return valor.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function montarCodigo(prefixo, centavos) {
+      const limpo = (prefixo || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+      const baseNum = String(centavos).padStart(6, "0");
+      return limpo ? `${limpo}${baseNum}` : baseNum;
+    }
+
+    function renderizarEtiquetas() {
+      avisoEl.textContent = "";
+      const precoRaw = parseFloat(precoInput.value);
+      const qtdRaw = parseInt(qtdInput.value, 10);
+
+      if (Number.isNaN(precoRaw) || precoRaw < 0 || precoRaw > 1000) {
+        avisoEl.textContent = "Digite um preço válido entre R$ 0,00 e R$ 1.000,00.";
+        return;
+      }
+
+      const qtd = Number.isNaN(qtdRaw) || qtdRaw < 1 ? 1 : Math.min(qtdRaw, 300);
+      qtdInput.value = qtd;
+
+      const precoArredondado = Math.round(precoRaw * 100) / 100;
+      const centavos = Math.round(precoArredondado * 100);
+      const textoPreco = formatarMoedaBR(precoArredondado);
+      const codigoBarras = montarCodigo(prefixoInput.value, centavos);
+
+      gradeEl.innerHTML = "";
+
+      for (let i = 0; i < qtd; i++) {
+        const etq = document.createElement("div");
+        etq.className = "etiqueta";
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.id = `barcode-${i}`;
+
+        const valorDiv = document.createElement("div");
+        valorDiv.className = "valor";
+        valorDiv.textContent = textoPreco;
+
+        etq.appendChild(svg);
+        etq.appendChild(valorDiv);
+        gradeEl.appendChild(etq);
+
+        JsBarcode(svg, codigoBarras, {
+          format: "CODE128",
+          displayValue: false,
+          margin: 0,
+          width: 1.2,
+          height: 28
+        });
+      }
+    }
+
+    btnGerar.addEventListener("click", renderizarEtiquetas);
+    precoInput.addEventListener("input", renderizarEtiquetas);
+    qtdInput.addEventListener("input", renderizarEtiquetas);
+    prefixoInput.addEventListener("input", renderizarEtiquetas);
+
+    btnImprimir.addEventListener("click", () => {
+      renderizarEtiquetas();
+      if (!avisoEl.textContent) {
+        window.print();
+      }
+    });
+
+    renderizarEtiquetas();
+  </script>
+</body>
+</html>
