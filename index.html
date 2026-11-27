@@ -134,10 +134,27 @@
       break-inside: avoid;
     }
 
+    .texto-etiqueta {
+      width: 100%;
+      font-size: 7pt;
+      font-weight: 700;
+      line-height: 1.05;
+      text-align: center;
+      color: #000000;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.4mm;
+    }
+
     .etiqueta svg {
       width: 24mm;
       height: 5.5mm;
       display: block;
+    }
+
+    .etiqueta.com-texto svg {
+      height: 4.3mm;
     }
 
     .valor {
@@ -147,6 +164,11 @@
       margin-top: 0.8mm;
       color: #000000;
       letter-spacing: 0.2px;
+    }
+
+    .etiqueta.com-texto .valor {
+      font-size: 9.5pt;
+      margin-top: 0.5mm;
     }
 
     @media print {
@@ -197,6 +219,11 @@
         Prefixo do código (opcional)
         <input type="text" id="prefixo" maxlength="10" value="P" />
       </label>
+
+      <label>
+        Texto na etiqueta (opcional)
+        <input type="text" id="textoExtra" maxlength="32" placeholder="Ex.: REF 102 / PRATA" />
+      </label>
     </div>
 
     <div class="acoes">
@@ -215,6 +242,7 @@
     const precoInput = document.getElementById("preco");
     const qtdInput = document.getElementById("quantidade");
     const prefixoInput = document.getElementById("prefixo");
+    const textoExtraInput = document.getElementById("textoExtra");
     const gradeEl = document.getElementById("grade");
     const avisoEl = document.getElementById("aviso");
     const btnGerar = document.getElementById("btnGerar");
@@ -237,6 +265,7 @@
       avisoEl.textContent = "";
       const precoRaw = parseFloat(precoInput.value);
       const qtdRaw = parseInt(qtdInput.value, 10);
+      const textoExtra = (textoExtraInput.value || "").trim();
 
       if (Number.isNaN(precoRaw) || precoRaw < 0 || precoRaw > 1000) {
         avisoEl.textContent = "Digite um preço válido entre R$ 0,00 e R$ 1.000,00.";
@@ -255,7 +284,14 @@
 
       for (let i = 0; i < qtd; i++) {
         const etq = document.createElement("div");
-        etq.className = "etiqueta";
+        etq.className = textoExtra ? "etiqueta com-texto" : "etiqueta";
+
+        if (textoExtra) {
+          const textoDiv = document.createElement("div");
+          textoDiv.className = "texto-etiqueta";
+          textoDiv.textContent = textoExtra;
+          etq.appendChild(textoDiv);
+        }
 
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.id = `barcode-${i}`;
@@ -273,7 +309,7 @@
           displayValue: false,
           margin: 0,
           width: 1.0,
-          height: 20
+          height: textoExtra ? 15 : 20
         });
       }
     }
@@ -282,6 +318,7 @@
     precoInput.addEventListener("input", renderizarEtiquetas);
     qtdInput.addEventListener("input", renderizarEtiquetas);
     prefixoInput.addEventListener("input", renderizarEtiquetas);
+    textoExtraInput.addEventListener("input", renderizarEtiquetas);
 
     btnImprimir.addEventListener("click", () => {
       renderizarEtiquetas();
